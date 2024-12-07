@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>AI UI</title>
+
+        <link rel="shortcut icon" href="/static/favicon.ico" type="image/x-icon" />
+        <link rel="stylesheet" href="/static/lib/mini-default.min.css">
+        <link rel="stylesheet" href="/static/css/index.css">
+
+        <script type="text/javascript" src="/static/lib/vue/vue.js"></script>
+        <script type="text/javascript" src="/static/lib/vue/vue3-sfc-loader.js"></script>
+        <script type="text/javascript" src="/static/lib/jquery.min.js"></script>
+
+        <style type="text/css">
+#chat_output {
+    width: 100%;
+    height: 600px;
+    border: 1px solid grey;
+    overflow: scroll;
+}
+        </style>
+    </head>
+    <body>
+        <h2>AI UI</h2>
+        <div>
+            <p>This page is for accessing and testing an AI API</p>
+        </div>
+        <div class="container row" id="app">
+            <div class="col-md-4">
+                <b>Chat</b><br>
+                <tabs
+                  :create="chatCreate"
+                  :remove="(t, i) => chatRemove(t, i)"
+                  :select="(t, i) => chatSelect(t, i)"
+                  :tabs='chats'
+                ></tabs>
+                <div v-for="(c, i) in chats.list">
+                    <chat-box
+                      v-if="i === chats.selected"
+                      :chat="(m, h, d, c) => chat(m, h, d, c)"
+                      :memory="c"
+                      :markdown="markdown"
+                      :history="chats.list[i].history"
+                    ></chat-box>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <b>Code Editor</b><br>
+                <tabs
+                  :create="codeCreate"
+                  :remove="(t, i) => codeRemove(t, i)"
+                  :select="(t, i) => codeSelect(t, i)"
+                  :tabs='codes'
+                ></tabs>
+                <code-editor
+                  :suggest="(p, s, m, c) => suggest(p, s, m, c)"
+                  :monaco="monaco"
+                  :memory="codeMemory"
+                ></code-editor>
+            </div>
+        </div>
+        <script type="text/javascript" src="js/index.js"></script>
+    </body>
+</html>

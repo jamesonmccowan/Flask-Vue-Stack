@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{[ title ]}</title>
+
+    <link rel="icon" href="{[ url_for('static', filename='/favicon.ico') ]}">
+    <link rel="shortcut icon" href="{[ url_for('static', filename='/favicon.ico') ]}" type="image/x-icon" />
+
+    <link rel="stylesheet" href="{[ url_for('static', filename='/lib/mini-default.min.css') ]}">
+    <link rel="stylesheet" href="{[ url_for('static', filename='/css/index.css') ]}">
+
+    <script type="text/javascript" src="{[ url_for('static', filename='/lib/vue/vue.js') ]}"></script>
+    <script type="text/javascript" src="{[ url_for('static', filename='/lib/vue/vue3-sfc-loader.js') ]}"></script>
+    <script type="text/javascript" src="{[ url_for('static', filename='/lib/jquery.min.js') ]}"></script>
+    <script type="text/javascript" src="{[ url_for('static', filename='/js/index.js') ]}"></script>
+</head>
+<body>
+    <a href="/">
+        <img class="icon" src="{[ url_for('static', filename='img/image.png') ]}">
+        <h1>{[ title ]}</h1>
+    </a>
+    <hr>
+    <a href="/links">Links</a>
+    |
+    <a href="/tags">Tags</a>
+    <hr>
+    <div id="content">
+{% block content %}{% endblock %}
+    </div>
+</body>
+</html>
