@@ -1,0 +1,331 @@
+{% extends "blank.html" %}
+{% set title = "Links" %}
+{% block content %}
+    <script type="text/javascript">
+$(document).ready(function() {
+    const app = new Vue({
+        el: '#vue',
+        data() {
+            return {
+                links: [],
+                tags: [],
+
+                id_field: null,
+                url_field: "",
+                title_field: "",
+                description_field: "",
+                image_field: "{[ url_for('static', filename='/img/image.png') ]}",
+                tags_field: [],
+
+                show_edit: false,
+                tag_input: "",
+
+                search: "",
+            }
+        },
+        mounted() {
+            const promise = this.getLinks();
+            this.getTags();
+            this.clearLink();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const linkId = urlParams.get('link_id');
+            if (linkId) {
+                const self = this;
+                // Find the link with the matching ID and populate the form fields
+                promise.done(function () {
+                    const link = self.links.find(link => link.id === parseInt(linkId));
+                    if (link) {
+                        self.setupEditLink(link);
+                    }
+                });
+            }
+        },
+        methods: {
+            getTags() {
+                const self = this;
+                return $.ajax({
+                    type: 'GET',
+                    url: '/api/tags',
+                    dataType: 'json',
+                    success: function(ls) {
+                        while (self.tags.length > 0) {
+                            self.tags.pop();
+                        }
+                        $.each(ls, function(index, tag) {
+                            self.tags.unshift(tag);
+                        });
+                    }
+                });
+            },
+            getLinks() {
+                const self = this;
+                return $.ajax({
+                    type: 'GET',
+                    url: '/api/links',
+                    dataType: 'json',
+                    success: function(ls) {
+                        while (self.links.length > 0) {
+                            self.links.pop();
+                        }
+                        $.each(ls, function(index, link) {
+                            self.links.unshift(link);
+                        });
+                    }
+                });
+            },
+            createLink() {
+                const self = this;
+                return $.ajax({
+                    type: 'POST',
+                    url: '/api/links',
+                    data: JSON.stringify({
+                        url:         self.url_field,
+                        title:       self.title_field,
+                        description: self.description_field,
+                        src:         self.image_field,
+                        tags:        this.tags_field,
+                    }),
+                    contentType: 'application/json',
+                    success: function(data) {
+                        self.getLinks();
+                        self.clearLink();
+                    }
+               });
+            },
+            setupEditLink(link) {
+                this.show_edit         = true;
+                this.id_field          = link.id;
+                this.url_field         = link.url;
+                this.title_field       = link.title;
+                this.description_field = link.description;
+                this.image_field       = link.src;
+                this.tags_field        = link.tags.map((tag) => tag.name);
+                this.tag_input         = this.tags_field.join(", ");
+            },
+            editLink() {
+                const self = this;
+                if (self.id_field !== null) {
+                    return $.ajax({
+                        type: 'PUT',
+                        url: '/api/links/' + self.id_field,
+                        data: JSON.stringify({
+                            url:         self.url_field,
+                            title:       self.title_field,
+                            description: self.description_field,
+                            src:         self.image_field,
+                            tags:        this.tags_field,
+                        }),
+                        contentType: 'application/json',
+                        success: function(data) {
+                            self.getLinks();
+                            self.clearLink();
+                        }
+                   });
+                }
+            },
+            deleteLink(link) {
+                const self = this;
+                if (link && link.id !== null
+                && confirm("Are you sure you want to delete this link?")) {
+                    return $.ajax({
+                        type: 'DELETE',
+                        url: '/api/links/' + link.id,
+                        contentType: 'application/json',
+                        success: function(data) {
+                            self.getLinks();
+                            self.clearLink();
+                        }
+                    });
+                }
+            },
+            clearLink() {
+                this.id_field = null;
+                this.url_field = "";
+                this.title_field = "";
+                this.description_field = "";
+                this.image_field = "{[ url_for('static', filename='img/image.png') ]}";
+                this.tag_input = "";
+                this.tags_field = [];
+            },
+            getLinkPreview() {
+                const self = this;
+                return $.ajax({
+                    type: 'POST',
+                    url: '/api/link_preview',
+                    data: JSON.stringify({
+                        url: self.url_field,
+                    }),
+                    contentType: 'application/json',
+                    success: function(data) {
+                        self.title_field       = data.title;
+                        self.description_field = data.description;
+                        self.image_field       = data.image_url;
+
+                        // add domain name as tag
+                        const parsedUrl = new URL(self.url_field);
+                        if (parsedUrl) {
+                            self.tag_input = parsedUrl.hostname;
+                        } else {
+                            self.tag_input = "";
+                        }
+                    }
+               });
+            },
+            parseTags() {
+                this.tags_field = this.tag_input.split(', ');
+            },
+            searchMatch(link) {
+                let keys = this.search.split(",").map((k) => k.trim().toLowerCase());
+
+                // check if each key is a tag or contained in one of the string fields of the link
+                let matched = keys.filter((k) => {
+                    return (
+                        link.title.toLowerCase().includes(k)
+                        || link.description.toLowerCase().includes(k)
+                        || link.tags.filter((t) => t.name === k).length > 0
+                    );
+                })
+                return keys.length === matched.length;
+            },
+        },
+    });
+});
+    </script>
+    <style type="text/css">
+#links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+#links li {
+    border-bottom: 1px solid #ccc;
+    padding: 10px;
+}
+#links li:hover {
+    background-color: #f0f0f0;
+}
+.link {
+    position: relative;
+    clear: both;
+}
+.link img {
+    position: relative;
+    float: left;
+    height: 4em;
+    max-width: 25%;
+    margin-right: 10px;
+    border: 1px solid white;
+}
+.tags {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+a.tag {
+    display: inline-block;
+    background-color: #4CAF50; /* green */
+    color: #fff;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 12px;
+    margin-right: 5px;
+    cursor: pointer;
+    text-decoration: none;
+}
+a.tag:hover {
+    background-color: #3e8e41; /* darker green on hover */
+}
+    </style>
+    <div id="vue">
+        <button v-if="!show_edit" @click="() => show_edit = true">Show the Edit Form</button>
+        <div v-if="show_edit">
+            <!-- Edit Link form -->
+            <h3>Link Editing Form</h3>
+            <button v-if="show_edit" @click="() => show_edit = false">Hide the Edit Form</button>
+            <label>ID: {{ id_field }}</label>
+            <br>
+            <img
+                :src="image_field || '{[ url_for('static', filename='/img/image.png') ]}'"
+                style="position: relative; float: left; max-width: 24%; border: 1px solid white;"
+            >
+            <div style="margin-left: 25%;">
+                <label>
+                    URL: <a :href="url_field">{{ url_field  }}</a><br>
+                    <input type="text" v-model="url_field" style="width: 50%;">
+                </label>
+                <button @click="getLinkPreview">Get Preview</button>
+                <br>
+                <label>
+                    Image src: <a :href="image_field">{{ image_field }}</a><br>
+                    <input type="text" v-model="image_field" style="width: 50%;">
+                </label>
+                <br>
+                <label>
+                    Title: <b>{{ title_field  }}</b><br>
+                    <input type="text" v-model="title_field" style="width: 50%;">
+                </label>
+                <br>
+                <label>
+                    Description: {{ description_field }}<br>
+                    <textarea v-model="description_field" style="width: 50%;"></textarea>
+                </label>
+                <br>
+                <label>Tags:<br>
+                    <textarea v-model="tag_input" @input="parseTags"></textarea>
+                    <div class="tags"  v-if="tags_field.length > 0">
+                        <a v-for="tag in tags_field"
+                           class="tag"
+                           :href="'/search?type=link&query=' + encodeURIComponent(tag.name)"
+                        >{{ tag }}</a>
+                    </div>
+                </label>
+            </div>
+            <div style="position: relative; clear: both; border: 1px solid white;">
+                <button @click="editLink">Edit Link</button>
+                <button @click="createLink">Create Link</button>
+                <button @click="clearLink">Clear</button>
+            </div>
+        </div>
+
+        <hr>
+
+        <div id="searchbar" class="container">
+            <label class="row justify-content-center mb-3">
+                <div class="col-form-label col-md-2">Search Filter</div>
+                <input type="search" v-model="search" class="form-control col-md-8">
+            </label>
+        </div>
+
+        <ul id="links">
+            <li
+                v-for="link in links"
+                :key="link.id"
+                v-if="searchMatch(link)"
+                class="link"
+            >
+                <img
+                    :src="link.src || '{[ url_for('static', filename='/img/image.png') ]}'"
+                >
+                <button
+                    @click="deleteLink(link)"
+                    style="position: relative; float: right;"
+                >Delete</button>
+                <button
+                    @click="setupEditLink(link)"
+                    style="position: relative; float: right;"
+                >Edit</button>
+                <a :href="link.url">{{ link.title }}</a>
+                <p style="background-color: white; color: black;">{{ link.description }}</p>
+                <div class="tags"  v-if="link.tags.length > 0">
+                    <a v-for="tag in link.tags"
+                       :key="tag.id"
+                       class="tag"
+                       :href="'/search?type=link&query=' + encodeURIComponent(tag.name)"
+                       :title="tag.description"
+                    >{{ tag.name }}</a>
+                </div>
+            </li>
+        </ul>
+    </div>
+{% endblock %}

@@ -1,0 +1,198 @@
+{% extends "blank.html" %}
+{% set title = "Tags" %}
+{% block content %}
+    <script type="text/javascript">
+$(document).ready(function() {
+    const app = new Vue({
+        el: '#vue',
+        data() {
+            return {
+                tags: [],
+
+                id_field: null,
+                name_field: "",
+                description_field: "",
+
+                show_edit: false,
+                search: "",
+            }
+        },
+        mounted() {
+            const promise = this.getTags();
+            this.clearTag();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const tag_name = urlParams.get('name');
+            if (tag_name) {
+                const self = this;
+                // Find the link with the matching ID and populate the form fields
+                promise.done(function () {
+                    const tag = self.tags.find(tag => tag.name === tag_name);
+                    if (tag) {
+                        self.setupEditTag(tag);
+                    }
+                });
+            }
+        },
+        methods: {
+            getTags() {
+                const self = this;
+                return $.ajax({
+                    type: 'GET',
+                    url: '/api/tags',
+                    dataType: 'json',
+                    success: function(ls) {
+                        while (self.tags.length > 0) {
+                            self.tags.pop();
+                        }
+                        $.each(ls, function(index, tag) {
+                            self.tags.unshift(tag);
+                        });
+                    }
+                });
+            },
+            createTag() {
+                const self = this;
+                return $.ajax({
+                    type: 'POST',
+                    url: '/api/tags',
+                    data: JSON.stringify({
+                        name:        self.name_field,
+                        description: self.description_field,
+                    }),
+                    contentType: 'application/json',
+                    success: function(data) {
+                        self.getTags();
+                        self.clearTag();
+                    }
+               });
+            },
+            setupEditTag(tag) {
+                this.show_edit = true;
+                this.id_field = tag.id;
+                this.name_field = tag.name;
+                this.description_field = tag.description;
+            },
+            editTag() {
+                const self = this;
+                if (self.id_field !== null) {
+                    return $.ajax({
+                        type: 'PUT',
+                        url: '/api/tags/' + self.id_field,
+                        data: JSON.stringify({
+                            name:        self.name_field,
+                            description: self.description_field,
+                        }),
+                        contentType: 'application/json',
+                        success: function(data) {
+                            self.getTags();
+                            self.clearTag();
+                        }
+                   });
+                }
+            },
+            deleteTag(tag) {
+                const self = this;
+                if (tag && tag.id !== null
+                && confirm("Are you sure you want to delete this tag?")) {
+                    return $.ajax({
+                        type: 'DELETE',
+                        url: '/api/tags/' + tag.id,
+                        contentType: 'application/json',
+                        success: function(data) {
+                            self.getTags();
+                            self.clearTag();
+                        }
+                    });
+                }
+            },
+            clearTag() {
+                this.id_field = null;
+                this.name_field = "";
+                this.description_field = "";
+            },
+            searchMatch(tag) {
+                let keys = this.search.split(",").map((k) => k.trim().toLowerCase());
+
+                // check if each key is contained in one of the string fields of the tag
+                let matched = keys.filter((k) => {
+                    return (
+                        tag.name.toLowerCase().includes(k)
+                        || (tag.description && tag.description.toLowerCase().includes(k))
+                    );
+                })
+                return keys.length === matched.length;
+            },
+        },
+    });
+});
+    </script>
+    <style type="text/css">
+#Tags {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+#Tags li {
+    border-bottom: 1px solid #ccc;
+    padding: 10px;
+}
+#Tags li:hover {
+    background-color: #f0f0f0;
+}
+    </style>
+    <div id="vue">
+        <button v-if="!show_edit" @click="() => show_edit = true">Show the Edit Form</button>
+        <div v-if="show_edit">
+            <!-- Edit Tag form -->
+            <h3>Tag Editing Form</h3>
+            <button v-if="show_edit" @click="() => show_edit = false">Hide the Edit Form</button>
+            <label>ID: {{ id_field }}</label>
+            <div style="margin-left: 25%;">
+                <label>
+                    Title: <b>{{ name_field }}</b><br>
+                    <input type="text" v-model="name_field" style="width: 50%;">
+                </label>
+                <br>
+                <label>
+                    Description: {{ description_field }}<br>
+                    <textarea v-model="description_field" style="width: 50%;"></textarea>
+                </label>
+            </div>
+            <div style="position: relative; clear: both; border: 1px solid white;">
+                <button @click="editTag">Edit Tag</button>
+                <button @click="createTag">Create Tag</button>
+                <button @click="clearTag">Clear</button>
+            </div>
+        </div>
+
+        <hr>
+
+        <div id="searchbar" class="container">
+            <label class="row justify-content-center mb-3">
+                <div class="col-form-label col-md-2">Search Filter</div>
+                <input type="search" v-model="search" class="form-control col-md-8">
+            </label>
+        </div>
+
+        <ul id="tags">
+            <li
+                v-for="tag in tags"
+                :key="tag.id"
+                style="position:relative; clear: both;"
+                v-if="searchMatch(tag)"
+            >
+                <button
+                    @click="deleteTag(tag)"
+                    style="position: relative; float: right;"
+                >Delete</button>
+                <button
+                    @click="setupEditTag(tag)"
+                    style="position: relative; float: right;"
+                >Edit</button>
+                <u>{{ tag.name }}</u>
+                <p style="background-color: black;">{{ tag.description }}</p>
+            </li>
+        </ul>
+    </div>
+{% endblock %}
